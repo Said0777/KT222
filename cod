@@ -1,0 +1,402 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const TodoApp());
+}
+
+class Task {
+  String title;
+  bool isDone;
+  DateTime createdAt;
+
+  Task({
+    required this.title,
+    this.isDone = false,
+    required this.createdAt,
+  });
+}
+
+class TodoApp extends StatelessWidget {
+  const TodoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'ToDo App',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.indigo,
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final List<Task> tasks = [];
+
+  String filter = "Все";
+  String sortType = "Новые";
+
+  void addTask(String title) {
+    if (title.trim().isEmpty) return;
+
+    setState(() {
+      tasks.add(
+        Task(
+          title: title,
+          createdAt: DateTime.now(),
+        ),
+      );
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Задача добавлена"),
+      ),
+    );
+  }
+
+  void deleteTask(Task task) {
+    setState(() {
+      tasks.remove(task);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Задача удалена"),
+      ),
+    );
+  }
+
+  void editTask(Task task) {
+    TextEditingController controller =
+        TextEditingController(text: task.title);
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Редактировать задачу"),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Отмена"),
+            ),
+            FilledButton(
+              onPressed: () {
+                setState(() {
+                  task.title = controller.text;
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text("Сохранить"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  List<Task> getTasks() {
+    List<Task> filtered = [];
+
+    if (filter == "Выполненные") {
+      filtered = tasks.where((t) => t.isDone).toList();
+    } else if (filter == "Невыполненные") {
+      filtered = tasks.where((t) => !t.isDone).toList();
+    } else {
+      filtered = List.from(tasks);
+    }
+
+    if (sortType == "По алфавиту") {
+      filtered.sort((a, b) => a.title.compareTo(b.title));
+    }
+
+    if (sortType == "Выполненные сверху") {
+      filtered.sort((a, b) => b.isDone ? 1 : -1);
+    }
+
+    if (sortType == "Новые") {
+      filtered.sort(
+        (a, b) => b.createdAt.compareTo(a.createdAt),
+      );
+    }
+
+    return filtered;
+  }
+
+  void showAddDialog() {
+    TextEditingController controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Новая задача"),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: "Введите задачу",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Отмена"),
+            ),
+            FilledButton(
+              onPressed: () {
+                addTask(controller.text);
+                Navigator.pop(context);
+              },
+              child: const Text("Добавить"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    List<Task> visibleTasks = getTasks();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          "Список дел",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.indigo,
+                  Colors.blue.shade400,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Всего задач",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                  ),
+                ),
+                Text(
+                  "${tasks.length}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField(
+                    value: filter,
+                    decoration: const InputDecoration(
+                      labelText: "Фильтр",
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: "Все",
+                        child: Text("Все"),
+                      ),
+                      DropdownMenuItem(
+                        value: "Выполненные",
+                        child: Text("Выполненные"),
+                      ),
+                      DropdownMenuItem(
+                        value: "Невыполненные",
+                        child: Text("Невыполненные"),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        filter = value!;
+                      });
+                    },
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                Expanded(
+                  child: DropdownButtonFormField(
+                    value: sortType,
+                    decoration: const InputDecoration(
+                      labelText: "Сортировка",
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: "Новые",
+                        child: Text("Новые"),
+                      ),
+                      DropdownMenuItem(
+                        value: "По алфавиту",
+                        child: Text("По алфавиту"),
+                      ),
+                      DropdownMenuItem(
+                        value: "Выполненные сверху",
+                        child: Text("Выполненные"),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        sortType = value!;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          Expanded(
+            child: visibleTasks.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment:
+                          MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.task_alt,
+                          size: 80,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          "Нет задач",
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: visibleTasks.length,
+                    itemBuilder: (_, index) {
+                      final task = visibleTasks[index];
+
+                      return AnimatedContainer(
+                        duration:
+                            const Duration(milliseconds: 300),
+                        margin:
+                            const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: task.isDone
+                              ? Colors.green.shade50
+                              : Colors.white,
+                          borderRadius:
+                              BorderRadius.circular(18),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ListTile(
+                          leading: Checkbox(
+                            value: task.isDone,
+                            onChanged: (value) {
+                              setState(() {
+                                task.isDone = value!;
+                              });
+                            },
+                          ),
+                          title: Text(
+                            task.title,
+                            style: TextStyle(
+                              fontSize: 17,
+                              decoration: task.isDone
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          subtitle: Text(
+                            task.isDone
+                                ? "Выполнено"
+                                : "Активно",
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                onPressed: () =>
+                                    editTask(task),
+                              ),
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.delete),
+                                onPressed: () =>
+                                    deleteTask(task),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: showAddDialog,
+        icon: const Icon(Icons.add),
+        label: const Text("Добавить"),
+      ),
+    );
+  }
+}
